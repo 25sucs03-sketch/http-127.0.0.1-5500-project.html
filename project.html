@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>AI Lab Record Generator</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npmst/tesseract.min.js"></script>
+
+<style>
+body{
+    font-family: "Times New Roman", 'serif','Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    text-align:center;
+    background:#f4f4f4;
+}
+
+input{
+    margin:10px;
+}
+
+textarea{
+    width:90%;
+    height:180px;
+    margin:10px;
+    font-family:monospace;
+}
+
+button{
+    padding:10px 20px;
+    background:#007bff;
+    color:white;
+    border:none;
+    cursor:pointer;
+}
+
+#status{
+    color:green;
+    font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+
+<h2>AI-Based Lab Record Generator (PNG + TXT Supported)</h2>
+
+<h3>Upload Files (.txt / .png / .jpg)</h3>
+
+<label>Aim File:</label><br>
+<input type="file" id="aimFile"><br>
+
+<label>Program File:</label><br>
+<input type="file" id="programFile"><br>
+
+<label>Output File:</label><br>
+<input type="file" id="outputFile"><br>
+
+<p id="status"></p>
+
+<hr>
+
+<h3>Extracted Content</h3>
+
+<textarea id="aimText" placeholder="Aim text will appear here"></textarea>
+<textarea id="programText" placeholder="Program text will appear here"></textarea>
+<textarea id="outputText" placeholder="Output text will appear here"></textarea>
+
+<br>
+<button onclick="generatePDF()">Generate Lab Record PDF</button>
+
+<script>
+
+// 🔥 Read TXT or PNG/JPG
+function handleFile(fileInput, textAreaID){
+
+    const file = fileInput.files[0];
+    if(!file) return;
+
+    const fileType = file.type;
+
+    if(fileType === "text/plain"){
+        const reader = new FileReader();
+        reader.onload = function(e){
+            document.getElementById(textAreaID).value = e.target.result;
+        };
+        reader.readAsText(file);
+    }
+
+    else if(fileType.startsWith("image/")){
+        document.getElementById("status").innerText = "Extracting text from image... Please wait...";
+
+        Tesseract.recognize(
+            file,
+            'eng',
+            { logger: m => console.log(m) }
+        ).then(({ data: { text } }) => {
+            document.getElementById(textAreaID).value = text;
+            document.getElementById("status").innerText = "Text Extracted Successfully!";
+        });
+    }
+
+    else{
+        alert("Unsupported file type!");
+    }
+}
+
+
+// Event Listeners
+document.getElementById("aimFile")
+.addEventListener("change", function(){
+    handleFile(this, "aimText");
+});
+
+document.getElementById("programFile")
+.addEventListener("change", function(){
+    handleFile(this, "programText");
+});
+
+document.getElementById("outputFile")
+.addEventListener("change", function(){
+    handleFile(this, "outputText");
+});
+
+
+// 🔥 PDF Generator
+async function generatePDF(){
+
+const { jsPDF } = window.jspdf;
+const doc = new jsPDF();
+
+let aim = document.getElementById("aimText").value;
+let program = document.getElementById("programText").value;
+let output = document.getElementById("outputText").value;
+
+let y = 20;
+
+// Title
+doc.setFont("helvetica","bold");
+doc.setFontSize(16);
+doc.text("LAB RECORD", 80, y);
+y += 15;
+
+// Aim
+doc.setFontSize(12);
+doc.setFont("helvetica","bold");
+doc.text("Aim:", 20, y);
+y += 10;
+
+doc.setFont("helvetica","normal");
+let aimLines = doc.splitTextToSize(aim,170);
+doc.text(aimLines, 20, y);
+y += aimLines.length * 7 + 15;
+
+
+// Program
+doc.setFont("helvetica","bold");
+doc.text("Program:", 20, y);
+y += 10;
+
+doc.setFont("courier","normal"); // Supports { }
+doc.setFontSize(10);
+let programLines = doc.splitTextToSize(program,170);
+doc.text(programLines, 20, y);
+y += programLines.length * 6 + 20;
+
+
+// Output
+doc.setFontSize(12);
+doc.setFont("helvetica","bold");
+doc.text("Output:", 20, y);
+y += 10;
+
+doc.setFont("courier","normal");
+doc.setFontSize(10);
+let outputLines = doc.splitTextToSize(output,170);
+doc.text(outputLines, 20, y);
+
+doc.save("Lab_Record.pdf");
+}
+
+</script>
+
+</body>
+</html>
